@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>KhoMay — Lưu trữ đám mây</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,500;9..144,600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --ink:#101820; --paper:#F6F5F1; --card:#FFFFFF;
+    --line:#DEDBD2; --muted:#6B6659; --accent:#2D6E5E; --accent-soft:#E4EFE9;
+    --danger:#B3452C; --radius:10px;
+  }
+  *{box-sizing:border-box;}
+  html,body{height:100%;}
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font-family:'Inter',sans-serif; -webkit-font-smoothing:antialiased;
+    padding-top:env(safe-area-inset-top,0px); padding-bottom:env(safe-area-inset-bottom,0px);
+  }
+  h1,h2,h3{font-family:'Fraunces',serif; font-weight:600; margin:0;}
+  .app{max-width:980px; margin:0 auto; padding:32px 20px 60px;}
+  header{display:flex; align-items:baseline; justify-content:space-between; margin-bottom:28px; flex-wrap:wrap; gap:12px;}
+  header h1{font-size:28px; letter-spacing:-.01em;}
+  header h1 span{color:var(--accent);}
+  #userbar{font-size:13px; color:var(--muted); display:flex; align-items:center; gap:10px;}
+  #userbar button{background:none; border:1px solid var(--line); border-radius:20px; padding:5px 14px; cursor:pointer; font:inherit; color:var(--ink);}
+  #userbar button:hover{border-color:var(--ink);}
+
+  /* auth */
+  #auth-card{max-width:380px; margin:60px auto; background:var(--card); border:1px solid var(--line); border-radius:14px; padding:32px;}
+  #auth-card h2{font-size:22px; margin-bottom:4px;}
+  #auth-card p.sub{color:var(--muted); font-size:14px; margin:0 0 22px;}
+  #auth-card input{width:100%; padding:11px 13px; margin-bottom:12px; border:1px solid var(--line); border-radius:8px; font:inherit; background:var(--paper);}
+  #auth-card input:focus{outline:2px solid var(--accent); outline-offset:1px;}
+  #auth-card button.primary{width:100%; padding:12px; background:var(--ink); color:#fff; border:none; border-radius:8px; font:inherit; font-weight:500; cursor:pointer; margin-top:4px;}
+  #auth-card button.primary:hover{background:#000;}
+  #auth-toggle,#forgot-btn{background:none; border:none; color:var(--accent); cursor:pointer; font:inherit; font-size:13px; margin-top:14px; padding:0; text-decoration:underline;}
+  #forgot-btn{display:block;margin-top:8px;}
+  #auth-error{color:var(--danger); font-size:13px; margin-top:8px; min-height:16px;}
+
+  /* main app */
+  #main{display:none;}
+  .toolbar{display:flex; gap:10px; align-items:center; margin-bottom:18px; flex-wrap:wrap;}
+  .toolbar button, .droparea label{cursor:pointer; font:inherit;}
+  #upload-btn{background:var(--accent); color:#fff; border:none; padding:10px 18px; border-radius:8px; font-weight:500;}
+  #upload-btn:hover{background:#245a4d;}
+  #newfolder-btn{background:none; border:1px solid var(--line); padding:10px 16px; border-radius:8px; color:var(--ink);}
+  #newfolder-btn:hover{border-color:var(--ink);}
+  #storagebar{margin-left:auto; font-size:13px; color:var(--muted); text-align:right;}
+  #storagebar .track{width:140px; height:5px; background:var(--line); border-radius:3px; overflow:hidden; margin-top:4px;}
+  #storagebar .fill{height:100%; background:var(--accent);}
+
+  .breadcrumb{font-size:13px; color:var(--muted); margin-bottom:14px;}
+  .breadcrumb span{cursor:pointer;}
+  #back-btn{background:none;border:1px solid var(--line);border-radius:6px;padding:4px 10px;margin-right:8px;font:inherit;font-size:12px;color:var(--ink);cursor:pointer;}
+  #back-btn:hover{border-color:var(--ink);}
+  .breadcrumb span:hover{color:var(--ink); text-decoration:underline;}
+
+  #droptarget{border:1.5px dashed var(--line); border-radius:12px; padding:14px; text-align:center; color:var(--muted); font-size:13px; margin-bottom:18px; transition:border-color .15s, background .15s;}
+  #droptarget.drag{border-color:var(--accent); background:var(--accent-soft);}
+
+  #filelist{background:var(--card); border:1px solid var(--line); border-radius:12px; overflow:hidden;}
+  .row{display:flex; align-items:center; gap:14px; padding:13px 16px; border-bottom:1px solid var(--line); font-size:14px;}
+  .row:last-child{border-bottom:none;}
+  .row:hover{background:#FAF9F6;}
+  .row .icon{width:34px; height:34px; border-radius:8px; background:var(--accent-soft); color:var(--accent); display:flex; align-items:center; justify-content:center; font-size:15px; flex-shrink:0;}
+  .row .icon.folder{background:#EFE7D8; color:#8A6D2F;}
+  .row .name{flex:1; cursor:pointer; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;}
+  .row .name:hover{text-decoration:underline;}
+  .row .meta{color:var(--muted); font-size:12px; width:80px; text-align:right; flex-shrink:0;}
+  .row .actions{display:flex; gap:6px; flex-shrink:0;}
+  .row .actions button{background:none; border:1px solid var(--line); border-radius:6px; padding:5px 9px; font-size:12px; cursor:pointer; color:var(--ink);}
+  .row .actions button:hover{border-color:var(--ink);}
+  .row .actions button.del:hover{border-color:var(--danger); color:var(--danger);}
+  #empty{padding:50px 20px; text-align:center; color:var(--muted); font-size:14px;}
+
+  #progress{margin-bottom:14px;}
+  .pitem{font-size:12px; color:var(--muted); margin-bottom:6px;}
+  .ptrack{height:4px; background:var(--line); border-radius:2px; overflow:hidden;}
+  .pfill{height:100%; background:var(--accent); width:0%; transition:width .2s;}
+
+  /* preview modal */
+  #modal{display:none; position:fixed; inset:0; background:rgba(16,24,32,.75); align-items:center; justify-content:center; z-index:50; padding:20px;}
+  #modal .box{background:var(--card); border-radius:12px; max-width:min(700px,92vw); max-height:85vh; overflow:auto; padding:20px;}
+  #modal img{max-width:100%; border-radius:6px; display:block;}
+  #modal iframe{width:min(640px,80vw); height:70vh; border:none;}
+  #modal .close{float:right; background:none; border:none; font-size:20px; cursor:pointer; color:var(--muted);}
+
+  @media (prefers-color-scheme: dark){
+    :root:not([data-theme="light"]){
+      --ink:#EDEAE1; --paper:#14181A; --card:#1B2023; --line:#2C3336; --muted:#8C9294; --accent:#5FB79A; --accent-soft:#1F3129;
+    }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Kho<span>Mây</span></h1>
+    <div id="userbar"></div>
+  </header>
+
+  <div id="auth-card">
+    <h2 id="auth-title">Đăng nhập</h2>
+    <p class="sub" id="auth-sub">Truy cập kho lưu trữ cá nhân của bạn.</p>
+    <input id="email" type="email" placeholder="Email" autocomplete="username">
+    <input id="password" type="password" placeholder="Mật khẩu" autocomplete="current-password">
+    <button class="primary" id="auth-submit">Đăng nhập</button>
+    <div id="auth-error"></div>
+    <button id="auth-toggle">Chưa có tài khoản? Đăng ký ngay</button>
+    <button id="forgot-btn">Quên mật khẩu?</button>
+  </div>
+
+  <div id="main">
+    <div class="toolbar">
+      <button id="upload-btn">+ Tải file lên</button>
+      <input type="file" id="file-input" multiple style="display:none">
+      <button id="newfolder-btn">+ Thư mục mới</button>
+      <div id="storagebar"><div id="storagetext">Đã dùng 0 MB</div><div class="track"><div class="fill" id="storagefill" style="width:0%"></div></div></div>
+    </div>
+    <div class="breadcrumb" id="breadcrumb"></div>
+    <div id="droptarget">Kéo &amp; thả file vào đây để tải lên (ảnh tự động nén, file khác tối đa ~700 KB)</div>
+    <div id="progress"></div>
+    <div id="filelist"><div id="empty">Chưa có file nào. Hãy tải lên file đầu tiên.</div></div>
+  </div>
+</div>
+
+<div id="modal"><div class="box"><button class="close" id="modal-close">×</button><div id="modal-body"></div></div></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-auth-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.12.2/firebase-firestore-compat.min.js"></script>
+<script>
+/* =========================================================
+   1) DÁN CẤU HÌNH FIREBASE CỦA BẠN VÀO ĐÂY
+   Lấy tại: Firebase Console > Project settings > General > Your apps > SDK config
+   ========================================================= */
+const firebaseConfig = {
+  apiKey: "AIzaSyBNNDcoj0gM1MFNfDbbzZQSdfQwYy8SnZY",
+  authDomain: "khomay-9a2ea.firebaseapp.com",
+  projectId: "khomay-9a2ea",
+  storageBucket: "khomay-9a2ea.firebasestorage.app",
+  messagingSenderId: "79230972416",
+  appId: "1:79230972416:web:759a4e7884f457b3ac1ee5"
+};
+
+firebase.initializeApp(firebaseConfig);
+const auth = firebase.auth();
+const db = firebase.firestore();
+try{ db.settings({ experimentalForceLongPolling: true, merge: true }); }catch(e){ console.warn('Firestore settings:', e); }
+
+function withTimeout(promise, ms, msg){
+  return Promise.race([promise, new Promise((_, rej) => setTimeout(() => rej(new Error(msg)), ms))]);
+}
+
+let currentUser = null;
+let currentPath = []; // array of folder names (breadcrumb)
+let isRegisterMode = false;
+
+/* ---------- AUTH ---------- */
+document.getElementById('auth-toggle').onclick = () => {
+  isRegisterMode = !isRegisterMode;
+  document.getElementById('auth-title').textContent = isRegisterMode ? 'Đăng ký' : 'Đăng nhập';
+  document.getElementById('auth-submit').textContent = isRegisterMode ? 'Tạo tài khoản' : 'Đăng nhập';
+  document.getElementById('auth-toggle').textContent = isRegisterMode ? 'Đã có tài khoản? Đăng nhập' : 'Chưa có tài khoản? Đăng ký ngay';
+  document.getElementById('auth-error').textContent = '';
+  document.getElementById('forgot-btn').style.display = isRegisterMode ? 'none' : 'block';
+};
+
+document.getElementById('auth-submit').onclick = async () => {
+  const email = document.getElementById('email').value.trim();
+  const pass = document.getElementById('password').value;
+  const errEl = document.getElementById('auth-error');
+  errEl.textContent = '';
+  errEl.style.color = '';
+  if(!email || !pass){ errEl.textContent = 'Vui lòng nhập đầy đủ email và mật khẩu.'; return; }
+  try{
+    if(isRegisterMode){
+      await auth.createUserWithEmailAndPassword(email, pass);
+    } else {
+      await auth.signInWithEmailAndPassword(email, pass);
+    }
+  }catch(e){
+    errEl.textContent = translateError(e.code);
+  }
+};
+
+document.getElementById('forgot-btn').onclick = async () => {
+  const email = document.getElementById('email').value.trim();
+  const errEl = document.getElementById('auth-error');
+  if(!email){ errEl.style.color=''; errEl.textContent = 'Nhập email vào ô Email trước, rồi bấm lại "Quên mật khẩu?".'; return; }
+  try{
+    await auth.sendPasswordResetEmail(email);
+    errEl.style.color = '#2D6E5E';
+    errEl.textContent = 'Đã gửi email đặt lại mật khẩu. Kiểm tra hộp thư (cả mục Spam).';
+  }catch(e){
+    errEl.style.color = '';
+    errEl.textContent = translateError(e.code);
+  }
+};
+
+function translateError(code){
+  const map = {
+    'auth/email-already-in-use':'Email này đã được đăng ký.',
+    'auth/invalid-email':'Email không hợp lệ.',
+    'auth/weak-password':'Mật khẩu cần ít nhất 6 ký tự.',
+    'auth/user-not-found':'Không tìm thấy tài khoản.',
+    'auth/wrong-password':'Sai mật khẩu.',
+    'auth/invalid-credential':'Email hoặc mật khẩu không đúng.'
+  };
+  const more = {
+    'auth/operation-not-allowed':'Chưa bật đăng nhập Email/Password. Vào Firebase Console > Authentication > Sign-in method > bật Email/Password.',
+    'auth/operation-not-supported-in-this-environment':'Không chạy được khi mở file trực tiếp (file://). Hãy chạy qua localhost, xem hướng dẫn bên dưới.',
+    'auth/api-key-not-valid.-please-pass-a-valid-api-key.':'apiKey sai. Kiểm tra lại firebaseConfig.',
+    'auth/invalid-api-key':'apiKey sai. Kiểm tra lại firebaseConfig.',
+    'auth/configuration-not-found':'Project chưa bật Authentication. Vào Firebase Console > Authentication > Get started.',
+    'auth/network-request-failed':'Lỗi mạng hoặc bị chặn. Kiểm tra internet.',
+    'auth/unauthorized-domain':'Domain chưa được phép. Thêm localhost trong Authentication > Settings > Authorized domains.',
+    'auth/missing-email':'Hãy nhập email trước.',
+    'auth/too-many-requests':'Thử quá nhiều lần, đợi một lúc rồi thử lại.'
+  };
+  return (map[code] || more[code] || 'Lỗi không xác định') + ' [' + code + ']';
+}
+
+// Cảnh báo cấu hình & môi trường chạy
+window.addEventListener('DOMContentLoaded', () => {
+  const errEl = document.getElementById('auth-error');
+  if (firebaseConfig.apiKey === 'YOUR_API_KEY') {
+    errEl.textContent = 'Chưa dán firebaseConfig thật vào đầu đoạn <script> trong file.';
+  } else if (location.protocol === 'file:') {
+    errEl.textContent = 'Đang mở bằng file://, Firebase Auth thường bị lỗi. Chạy: python -m http.server 8000 rồi mở http://localhost:8000/cloud-storage-app.html';
+  }
+});
+
+auth.onAuthStateChanged(user => {
+  currentUser = user;
+  if(user){
+    document.getElementById('auth-card').style.display = 'none';
+    document.getElementById('main').style.display = 'block';
+    document.getElementById('userbar').innerHTML = `${user.email} <button id="logout-btn">Đăng xuất</button>`;
+    document.getElementById('logout-btn').onclick = () => auth.signOut();
+    currentPath = [];
+    loadFiles();
+    loadStorageUsage();
+  } else {
+    document.getElementById('auth-card').style.display = 'block';
+    document.getElementById('main').style.display = 'none';
+    document.getElementById('userbar').innerHTML = '';
+  }
+});
+
+/* ---------- HELPERS ---------- */
+function pathString(){ return currentPath.join('/'); }
+function fullStoragePath(name){ return `users/${currentUser.uid}/${pathString()}${pathString()?'/':''}${name}`; }
+
+function renderBreadcrumb(){
+  const el = document.getElementById('breadcrumb');
+  let html = '';
+  if(currentPath.length) html += `<button id="back-btn">← Quay lại</button> `;
+  html += `<span data-i="-1">Kho của tôi</span>`;
+  currentPath.forEach((p,i) => html += ` / <span data-i="${i}">${escapeHtml(p)}</span>`);
+  el.innerHTML = html;
+  el.querySelectorAll('span').forEach(sp => sp.onclick = () => {
+    const i = parseInt(sp.dataset.i);
+    currentPath = i === -1 ? [] : currentPath.slice(0, i+1);
+    loadFiles();
+  });
+  const back = document.getElementById('back-btn');
+  if(back) back.onclick = () => { currentPath.pop(); loadFiles(); };
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtSize(bytes){
+  if(bytes < 1024) return bytes + ' B';
+  if(bytes < 1024*1024) return (bytes/1024).toFixed(1) + ' KB';
+  return (bytes/1024/1024).toFixed(1) + ' MB';
+}
+
+/* ---------- LOAD FILE LIST (Firestore holds metadata; Storage holds bytes) ---------- */
+async function loadFiles(){
+  renderBreadcrumb();
+  const listEl = document.getElementById('filelist');
+  listEl.innerHTML = '<div id="empty">Đang tải...</div>';
+  let snap;
+  try{
+    snap = await withTimeout(db.collection('items')
+      .where('owner','==', currentUser.uid)
+      .where('parentPath','==', pathString())
+      .get(), 15000, 'Kết nối Firestore quá lâu (15 giây)');
+  }catch(e){
+    console.error(e);
+    listEl.innerHTML = '<div id="empty" style="color:#B3452C">Lỗi đọc Firestore: ' + escapeHtml(e.message) + '<br>Kiểm tra: đã tạo Firestore Database (test mode) chưa; nếu dùng Brave/adblock thì tắt Shields cho trang này.</div>';
+    return;
+  }
+  if(snap.empty){
+    listEl.innerHTML = '<div id="empty">Chưa có file nào ở đây. Hãy tải lên hoặc tạo thư mục mới.</div>';
+    return;
+  }
+  listEl.innerHTML = '';
+  const docs = snap.docs.slice().sort((a,b) => {
+    const x=a.data(), y=b.data();
+    if(x.type !== y.type) return x.type === 'folder' ? -1 : 1;
+    return (x.name||'').localeCompare(y.name||'');
+  });
+  docs.forEach(doc => {
+    const d = doc.data(), id = doc.id;
+    const row = document.createElement('div');
+    row.className = 'row';
+    if(d.type === 'folder'){
+      row.innerHTML = `
+        <div class="icon folder">📁</div>
+        <div class="name">${escapeHtml(d.name)}</div>
+        <div class="meta">Thư mục</div>
+        <div class="actions"><button class="del">Xóa</button></div>`;
+      row.querySelector('.name').onclick = () => { currentPath.push(d.name); loadFiles(); };
+      row.querySelector('.del').onclick = (e) => { e.stopPropagation(); deleteFolder(id, d.name); };
+    } else {
+      row.innerHTML = `
+        <div class="icon">📄</div>
+        <div class="name">${escapeHtml(d.name)}</div>
+        <div class="meta">${fmtSize(d.size||0)}</div>
+        <div class="actions">
+          <button class="preview">Xem</button>
+          <button class="dl">Tải về</button>
+          <button class="del">Xóa</button>
+        </div>`;
+      row.querySelector('.name').onclick = () => previewFile(id, d);
+      row.querySelector('.preview').onclick = () => previewFile(id, d);
+      row.querySelector('.dl').onclick = () => downloadFile(id, d);
+      row.querySelector('.del').onclick = () => deleteFile(id);
+    }
+    listEl.appendChild(row);
+  });
+}
+
+/* ---------- UPLOAD (lưu file dạng base64 trong Firestore, không cần Firebase Storage) ---------- */
+const MAX_CHARS = 950000; // Firestore giới hạn 1 MiB mỗi document
+
+document.getElementById('upload-btn').onclick = () => document.getElementById('file-input').click();
+document.getElementById('file-input').onchange = (e) => { uploadFiles(e.target.files); e.target.value = ''; };
+
+const dropEl = document.getElementById('droptarget');
+['dragover','dragenter'].forEach(evt => dropEl.addEventListener(evt, e => { e.preventDefault(); dropEl.classList.add('drag'); }));
+['dragleave','drop'].forEach(evt => dropEl.addEventListener(evt, e => { e.preventDefault(); dropEl.classList.remove('drag'); }));
+dropEl.addEventListener('drop', e => uploadFiles(e.dataTransfer.files));
+
+function readAsDataURL(file){
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(r.result); r.onerror = rej; r.readAsDataURL(file); });
+}
+
+async function prepareData(file){
+  const raw = await readAsDataURL(file);
+  const isImg = file.type.startsWith('image/') && file.type !== 'image/svg+xml';
+  if(raw.length <= MAX_CHARS) return { data: raw, mime: file.type || 'application/octet-stream', name: file.name };
+  if(!isImg) throw new Error('File quá lớn (tối đa khoảng 700 KB với file không phải ảnh).');
+  // ảnh lớn: nén lại thành JPEG
+  const img = await new Promise((res, rej) => { const i = new Image(); i.onload = () => res(i); i.onerror = rej; i.src = raw; });
+  let scale = Math.min(1, 1600 / Math.max(img.width, img.height)), q = 0.8;
+  for(let i = 0; i < 8; i++){
+    const c = document.createElement('canvas');
+    c.width = Math.round(img.width * scale); c.height = Math.round(img.height * scale);
+    c.getContext('2d').drawImage(img, 0, 0, c.width, c.height);
+    const out = c.toDataURL('image/jpeg', q);
+    if(out.length <= MAX_CHARS) return { data: out, mime: 'image/jpeg', name: file.name.replace(/\.[^.]+$/, '') + '.jpg' };
+    scale *= 0.75; q = Math.max(0.4, q - 0.05);
+  }
+  throw new Error('Ảnh quá lớn, không nén nhỏ hơn được.');
+}
+
+async function uploadFiles(fileListRaw){
+  const files = Array.from(fileListRaw);
+  const progEl = document.getElementById('progress');
+  for(const file of files){
+    const pitem = document.createElement('div');
+    pitem.className = 'pitem';
+    pitem.textContent = 'Đang tải lên: ' + file.name + ' ...';
+    progEl.appendChild(pitem);
+    try{
+      const { data, mime, name } = await prepareData(file);
+      const ref = db.collection('items').doc();
+      const batch = db.batch();
+      batch.set(ref, {
+        owner: currentUser.uid, type:'file', name, mime, parentPath: pathString(),
+        size: Math.round(data.length * 0.75), createdAt: firebase.firestore.FieldValue.serverTimestamp()
+      });
+      batch.set(db.collection('blobs').doc(ref.id), { owner: currentUser.uid, data });
+      await withTimeout(batch.commit(), 20000, 'Không lưu được lên Firestore (quá 20 giây). Kiểm tra mạng / tắt Brave Shields / xem Rules.');
+      pitem.remove();
+    }catch(e){
+      console.error(e);
+      pitem.style.color = '#B3452C';
+      pitem.textContent = 'Lỗi ' + file.name + ': ' + e.message;
+    }
+  }
+  loadFiles();
+  loadStorageUsage();
+}
+
+/* ---------- FOLDERS ---------- */
+document.getElementById('newfolder-btn').onclick = async () => {
+  const name = prompt('Tên thư mục mới:');
+  if(!name || !name.trim()) return;
+  try{
+    await db.collection('items').add({
+      owner: currentUser.uid, type:'folder', name: name.trim(),
+      parentPath: pathString(), createdAt: firebase.firestore.FieldValue.serverTimestamp()
+    });
+  }catch(e){ alert('Không tạo được thư mục: ' + e.message); return; }
+  loadFiles();
+};
+
+async function deleteFolder(docId, name){
+  if(!confirm(`Xóa thư mục "${name}"? (Chỉ xóa được thư mục rỗng)`)) return;
+  const childPath = pathString() ? `${pathString()}/${name}` : name;
+  const children = await db.collection('items').where('owner','==',currentUser.uid).where('parentPath','==',childPath).get();
+  if(!children.empty){ alert('Thư mục không rỗng. Hãy xóa file bên trong trước.'); return; }
+  if(docId) await db.collection('items').doc(docId).delete();
+  loadFiles();
+}
+
+async function deleteFile(docId){
+  if(!confirm('Xóa file này? Không thể hoàn tác.')) return;
+  const batch = db.batch();
+  batch.delete(db.collection('items').doc(docId));
+  batch.delete(db.collection('blobs').doc(docId));
+  await batch.commit();
+  loadFiles();
+  loadStorageUsage();
+}
+
+/* ---------- PREVIEW / DOWNLOAD ---------- */
+async function getBlobUrl(id){
+  const snap = await db.collection('blobs').doc(id).get();
+  if(!snap.exists) throw new Error('Không tìm thấy dữ liệu file.');
+  const blob = await (await fetch(snap.data().data)).blob();
+  return URL.createObjectURL(blob);
+}
+
+async function previewFile(id, d){
+  const body = document.getElementById('modal-body');
+  body.innerHTML = 'Đang tải...';
+  document.getElementById('modal').style.display = 'flex';
+  try{
+    const url = await getBlobUrl(id);
+    const mime = d.mime || '';
+    if(mime.startsWith('image/')) body.innerHTML = `<img src="${url}" alt="${escapeHtml(d.name)}">`;
+    else if(mime === 'application/pdf') body.innerHTML = `<iframe src="${url}"></iframe>`;
+    else body.innerHTML = '<p>Không xem trước được loại file này. Hãy bấm "Tải về".</p>';
+  }catch(e){ body.textContent = 'Lỗi: ' + e.message; }
+}
+
+async function downloadFile(id, d){
+  try{
+    const url = await getBlobUrl(id);
+    const a = document.createElement('a');
+    a.href = url; a.download = d.name;
+    document.body.appendChild(a); a.click(); a.remove();
+  }catch(e){ alert('Không tải được: ' + e.message); }
+}
+
+document.getElementById('modal-close').onclick = () => { document.getElementById('modal').style.display='none'; document.getElementById('modal-body').innerHTML=''; };
+document.getElementById('modal').onclick = (e) => { if(e.target.id==='modal') document.getElementById('modal-close').onclick(); };
+
+/* ---------- STORAGE USAGE (sums file sizes from Firestore metadata) ---------- */
+async function loadStorageUsage(){
+  try{
+  const snap = await db.collection('items').where('owner','==',currentUser.uid).where('type','==','file').get();
+  let total = 0;
+  snap.forEach(doc => total += (doc.data().size||0));
+  const limit = 1024*1024*1024; // giả định hạn mức hiển thị 1GB (gói free Firebase Storage cho phép nhiều hơn)
+  document.getElementById('storagetext').textContent = `Đã dùng ${fmtSize(total)}`;
+  document.getElementById('storagefill').style.width = Math.min(100, total/limit*100) + '%';
+  }catch(e){ console.error(e); }
+}
+</script>
+</body>
+</html>
